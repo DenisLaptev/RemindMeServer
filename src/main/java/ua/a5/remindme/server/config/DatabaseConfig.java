@@ -15,69 +15,72 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.jta.JtaTransactionManager;
 
 import javax.annotation.Resource;
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+
 @Configuration
-@EnableJpaRepositories("ua.a5.remindme.server.repository")
+/*@EnableJpaRepositories("ua.a5.remindme.server.repository")*/
+@EnableJpaRepositories(basePackages = "ua.a5.remindme.server.repository", entityManagerFactoryRef = "entityManagerFactory")
 @EnableTransactionManagement
 @PropertySource("classpath:db.properties")
 @ComponentScan("ua.a5.remindme.server")
 public class DatabaseConfig {
 
     @Resource
-    private Environment environment;
+    private Environment env;
 
-    @Bean
-    public LocalContainerEntityManagerFactoryBean entityManagerFactoryBean() {
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(dataSource());
-        em.setPackagesToScan(environment.getRequiredProperty("db.entity.package"));
-        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-        em.setJpaProperties(getHibernateProperties());
-        return em;
+
+    @Bean(name = "entityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+        emf.setDataSource(dataSource());
+        emf.setPackagesToScan(env.getRequiredProperty("db.entity.package"));
+        emf.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        emf.setJpaProperties(getHibernateProperties());
+        return emf;
     }
 
     @Bean
     public DataSource dataSource() {
 
-        BasicDataSource dataSource = new BasicDataSource();
+        BasicDataSource ds = new BasicDataSource();
 
-        dataSource.setUrl(environment.getRequiredProperty("db.url"));
-        dataSource.setDriverClassName(environment.getRequiredProperty("db.driver"));
-        dataSource.setUsername(environment.getRequiredProperty("db.username"));
-        dataSource.setPassword(environment.getRequiredProperty("db.password"));
+        ds.setUrl(env.getRequiredProperty("db.url"));
+        ds.setDriverClassName(env.getRequiredProperty("db.driver"));
+        ds.setUsername(env.getRequiredProperty("db.username"));
+        ds.setPassword(env.getRequiredProperty("db.password"));
 
-        dataSource.setInitialSize(Integer.valueOf(environment.getRequiredProperty("db.initialSize")));
-        dataSource.setMinIdle(Integer.valueOf(environment.getRequiredProperty("db.minIdle")));
-        dataSource.setMaxIdle(Integer.valueOf(environment.getRequiredProperty("db.maxIdle")));
-        dataSource.setTimeBetweenEvictionRunsMillis(Long.valueOf(environment.getRequiredProperty("db.timeBetweenEvictionRunsMillis")));
-        dataSource.setMinEvictableIdleTimeMillis(Long.valueOf(environment.getRequiredProperty("db.minEvictableIdleTimeMillis")));
-        dataSource.setTestOnBorrow(Boolean.valueOf(environment.getRequiredProperty("db.testOnBorrow")));
-        dataSource.setValidationQuery(environment.getRequiredProperty("db.validationQuerry"));
+        ds.setInitialSize(Integer.valueOf(env.getRequiredProperty("db.initialSize")));
+        ds.setMinIdle(Integer.valueOf(env.getRequiredProperty("db.minIdle")));
+        ds.setMaxIdle(Integer.valueOf(env.getRequiredProperty("db.maxIdle")));
+        ds.setTimeBetweenEvictionRunsMillis(Long.valueOf(env.getRequiredProperty("db.timeBetweenEvictionRunsMillis")));
+        ds.setMinEvictableIdleTimeMillis(Long.valueOf(env.getRequiredProperty("db.minEvictableIdleTimeMillis")));
+        ds.setTestOnBorrow(Boolean.valueOf(env.getRequiredProperty("db.testOnBorrow")));
+        ds.setValidationQuery(env.getRequiredProperty("db.validationQuery"));
 
-        return dataSource;
+        return ds;
     }
 
     @Bean
     public PlatformTransactionManager transactionManager() {
         JpaTransactionManager manager = new JpaTransactionManager();
-        manager.setEntityManagerFactory(entityManagerFactoryBean().getObject());
-
+        manager.setEntityManagerFactory(entityManagerFactory().getObject());
         return manager;
     }
 
     public Properties getHibernateProperties() {
-        Properties properties = new Properties();
-        InputStream is = getClass().getClassLoader().getResourceAsStream("hibernate.properties");
+
         try {
+            Properties properties = new Properties();
+            InputStream is = getClass().getClassLoader().getResourceAsStream("hibernate.properties");
             properties.load(is);
+            return properties;
         } catch (IOException e) {
-            e.printStackTrace();
             throw new IllegalArgumentException("Can`t find 'hibernate.properties' in classpath!", e);
         }
-        return properties;
     }
 }
